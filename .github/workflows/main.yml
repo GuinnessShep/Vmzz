@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.5.3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3.1.0
 
       - name: Build and run Docker image
         run: |
           docker build -t ubuntu-remote-desktop .
-          docker run -d -p 3389:3389 ubuntu-remote-desktop
+          docker run -p 3389:3389 ubuntu-remote-desktop
