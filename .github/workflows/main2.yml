@@ -1,0 +1,53 @@
+name: Run Tmate Connection and Set up Remote Desktop
+on: [push]
+
+jobs:
+  tmate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up tmate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmate
+
+      - name: Start tmate session
+        id: tmate
+        run: |
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+
+      - name: Print connection details
+        run: |
+          echo "Connection Info:"
+          echo "Session URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+          echo "Web URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+          echo "SSH Command: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh_ro}')"
+
+      - name: Repeat connection details
+        run: |
+          for i in {1..12}; do
+            echo "Connection Info (Iteration $i):"
+            echo "Session URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+            echo "Web URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+            echo "SSH Command: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh_ro}')"
+            sleep 5
+          done
+
+      - name: Install necessary packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kubuntu-desktop xrdp ngrok <other-package-names>
+
+      - name: Start Remote Desktop Service
+        run: |
+          sudo systemctl start xrdp
+
+      - name: Print Remote Desktop Connection Info
+        run: |
+          echo "Remote Desktop Info:"
+          echo "RDP Address: $(curl -s https://api.ipify.org)"
+          echo "Username: <username>"
+          echo "Password: <password>"
