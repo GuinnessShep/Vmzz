@@ -1,0 +1,21 @@
+name: Ubuntu Docker with Remote Desktop
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  setup-ubuntu-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and run Docker image
+        run: |
+          docker build -t ubuntu-remote-desktop .
+          docker run -d -p 3389:3389 ubuntu-remote-desktop
