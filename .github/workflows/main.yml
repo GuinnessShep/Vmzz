@@ -1,21 +1,71 @@
-name: Ubuntu Docker with Remote Desktop
 
-on:
+name: Remote Desktop GitHub Action
+
+on: 
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 jobs:
-  setup-ubuntu-docker:
+  build:
     runs-on: ubuntu-latest
+    env:
+      TMATE_SOCK: /tmp/tmate.sock
+      NGROK_TOKEN: 
+
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3.5.3
+    - name: Checkout
+      uses: actions/checkout@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2.9.0
-
-      - name: Build and run Docker image
-        run: |
-          docker build -t ubuntu-remote-desktop .
-          docker run -p 3389:3389 ubuntu-remote-desktop
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tmate xfce4 xrdp jq curl unzip
+    - name: Change Password
+      run: |
+        passwd << EOF
+        ilovedogshit
+        ilovedogshit
+        EOF
+    - name: Setup tmate session
+      run: |
+        tmate -S $TMATE_SOCK new-session -d &
+        sleep 10
+        echo "TMATE_SSH=$(tmate -S $TMATE_SOCK display -p '#{tmate_ssh}')" >> $GITHUB_ENV
+        echo "TMATE_WEB=$(tmate -S $TMATE_SOCK display -p '#{tmate_web}')" >> $GITHUB_ENV
+    - name: Show tmate connection details
+      run: |
+        echo "SSH connection: $TMATE_SSH"
+        echo "Web connection: $TMATE_WEB"
+    - name: Setup xrdp
+      run: |
+        sudo /etc/init.d/xrdp start
+    - name: Install ngrok
+      run: |
+        curl -s https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > ngrok.zip
+        unzip ngrok.zip
+        chmod +x ./ngrok
+    - name: Start ngrok tunnel
+      run: |
+        echo "Starting ngrok tunnel..."
+        ./ngrok authtoken 2N5KFYmyocPObelDKx26R1e2gfP_MiFweWSd9A8CbrC1E9Ef
+        ./ngrok tcp 3389 & 
+        sleep 10
+        NGROK_URL=$(curl --silent --show-error http://localhost:4040/api/tunnels | jq '.tunnels[0].public_url')
+        if [ -z "$NGROK_URL" ]; then
+          echo "Failed to get ngrok URL"
+          exit 1
+        fi
+        echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
+    - name: Show ngrok connection details
+      run: |
+        echo "RDP connection: $NGROK_URL"
+    - name: Keep Action running
+      run: |
+        while true; do
+          echo "Keeping GitHub Action running..."
+          sleep 300
+        done
