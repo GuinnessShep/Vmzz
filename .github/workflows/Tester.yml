@@ -1,0 +1,56 @@
+name: Run Tmate Connection and Set up Remote Desktop
+on: [push]
+
+jobs:
+  tmate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3.5.3
+
+      - name: Set up tmate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmate
+
+      - name: Start tmate session
+        id: tmate
+        run: |
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+
+      - name: Print connection details
+        run: |
+          echo "Connection Info:"
+          echo "Session URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+          echo "Web URL: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+          echo "SSH Command: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh_ro}')"
+
+      - name: Install necessary packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xrdp wget
+
+      - name: Start Remote Desktop Service
+        run: |
+          sudo systemctl start xrdp
+
+      - name: Download ngrok
+        run: |
+          wget -q https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+          unzip ngrok-stable-linux-amd64.zip
+          chmod +x ./ngrok
+          
+      - name: Connect to ngrok
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          echo "ngrok authtoken $NGROK_AUTH_TOKEN" && echo "ngrok tcp 3389 &" | ./ngrok
+          sleep 15 # Wait for ngrok to initialize
+          
+      - name: Print Remote Desktop Connection Info
+        run: |
+          echo "Remote Desktop Info:"
+          echo "RDP Address: $(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')"
+          echo "Username: root"
+          echo "Password: ilovedogshit"
